@@ -6,6 +6,7 @@ setwd("~/Documents/ATUS")
 options(stringsAsFactors=FALSE)
 
 library(ggplot2)
+library(gridExtra)
 library(reshape2)
 library(scales)
 # to show ggplot colors: show_col(hue_pal()(4))
@@ -68,6 +69,7 @@ summary(dat$t010201)
 # t010401 = "Personal/Private activities";
 summary(dat$t010401)
 
+
 # t020101 = "Interior cleaning";
 summary(dat$t020101)
 
@@ -77,8 +79,8 @@ summary(dat$t020102)
 # t020201 = "Food and drink preparation";
 # t020202 = "Food presentation";
 # t020203 = "Kitchen and food clean-up";
-dat$cooking <- dat$t020201 + dat$t020202 + dat$t020203
-summary(dat$cooking)
+dat$MealPrep <- dat$t020201 + dat$t020202 + dat$t020203
+summary(dat$MealPrep)
 summary(dat$t150201)
 
 # t020901 = "Financial management";
@@ -103,7 +105,14 @@ summary(dat$t020901)
 # t030302 = "Obtaining medical care for hh children";
 # t030303 = "Waiting associated with hh children's health";
 
-summary(dat$t030399)
+dat$PhysicalCare <- dat$t030101
+dat$Reading <- dat$t030102
+dat$Playing <- dat$t030103 + dat$t030105
+dat$ArtsCrafts <- dat$t030104
+dat$TalkingListening <- dat$t030106
+dat$MonitoringPlay <- dat$t030109
+dat$AllCare <- dat$t030101 + dat$t030102 + dat$t030103 + dat$t030105 + 
+  dat$t030104 + dat$t030106 + dat$t030109
 
 # t070101 = "Grocery shopping";
 # t070102 = "Purchasing gas";
@@ -111,6 +120,7 @@ summary(dat$t030399)
 # t070104 = "Shopping, except groceries, food and gas";
 # t070105 = "Waiting associated with shopping";
 # t070201 = "Comparison shopping";
+dat$GroceryShop <- dat$t070101
 # 
 # t080501 = "Using personal care services";
 # 
@@ -213,10 +223,13 @@ summary(dat$t030399)
 ##############################################################################
 # summarize and visualize
 
+# define some colors
 pointcol <- hue_pal()(4)[3]
 Kcol <- hue_pal()(1)
 
-# Needs
+### Needs
+
+# Sleep (analyze separately because of scale)
 dat$Sleep <- dat$t010101
 sleep <- ggplot(dat, aes(x=0, y=Sleep/60)) + 
   geom_boxplot(outlier.shape=NA) + #avoid plotting outliers twice
@@ -227,20 +240,19 @@ sleep <- ggplot(dat, aes(x=0, y=Sleep/60)) +
   guides(colour=FALSE) + 
   theme_classic()
 
-
+# Other needs
 dat$WashDressGroom <- dat$t010201
 dat$PrivateActivities <- dat$t010401
 dat$EatingDrinking <- dat$t110101 + dat$t110201
 dat$Needs <- dat$WashDressGroom + dat$PrivateActivities + dat$EatingDrinking
 
-dat.m <- melt(dat,
-              id.vars = "TUCASEID", 
+dat.m <- melt(dat, id.vars = "TUCASEID", 
               measure.vars=c("WashDressGroom", "PrivateActivities",
                              "EatingDrinking", "Needs"))
 dat.K <- data.frame(variable=c("WashDressGroom", "PrivateActivities",
                                "EatingDrinking", "Needs"),
                     value=c(7, 0, 20, 27))
-ggplot(dat.m, aes(x=variable, y=value, col=pointcol)) + 
+otherNeeds <- ggplot(dat.m, aes(x=variable, y=value, col=pointcol)) + 
   geom_boxplot(outlier.shape=NA, col="black") + #avoid plotting outliers twice
   geom_jitter(position=position_jitter(width=.1, height=0), shape=1, col=pointcol) +
   geom_point(data=dat.K, shape=17, size=4, col=Kcol) +
@@ -249,4 +261,53 @@ ggplot(dat.m, aes(x=variable, y=value, col=pointcol)) +
   guides(colour=FALSE) + 
   theme_classic()
 
+pdf("atus/figures/Needs.pdf", width=16, height=8)
+grid.arrange(sleep, otherNeeds, ncol=2)
+dev.off()
+
+### Cleaning, shopping, and cooking (dat$MealPrep)
+dat$Cleaning <- dat$t020101
+dat$Laundry <- dat$t020102
+dat$CleaningCooking <- dat$MealPrep + dat$GroceryShop + dat$Cleaning + dat$Laundry
+dat.m <- melt(dat, id.vars = "TUCASEID", 
+              measure.vars=c("MealPrep", "GroceryShop", "Cleaning",
+                             "Laundry", "CleaningCooking"))
+dat.K <- data.frame(variable=c("MealPrep", "GroceryShop", "Cleaning",
+                               "Laundry", "CleaningCooking"),
+                    value=c(60, 30, 45, 15, 60+45+15))
+cleancook <- ggplot(dat.m, aes(x=variable, y=value, col=pointcol)) + 
+  geom_boxplot(outlier.shape=NA, col="black") + #avoid plotting outliers twice
+  geom_jitter(position=position_jitter(width=.1, height=0), shape=1, col=pointcol) +
+  geom_point(data=dat.K, shape=17, size=4, col=Kcol) +
+  labs(x=" ", y = "Minutes per day") + 
+  #scale_x_discrete(name="", labels=c("Label 1", "Label 2")) +
+  guides(colour=FALSE) + 
+  theme_classic()
+pdf("atus/figures/CleanCook.pdf", width=8, height=8)
+cleancook
+dev.off()
+
+# Activities with children
+dat.m <- melt(dat, id.vars = "TUCASEID", 
+              measure.vars=c("PhysicalCare", "Reading",
+                             "Playing", "ArtsCrafts", 
+                             "TalkingListening", "MonitoringPlay",
+                             "AllCare"))
+dat.K <- data.frame(variable=c("PhysicalCare", "Reading",
+                               "Playing", "ArtsCrafts", 
+                               "TalkingListening", "MonitoringPlay",
+                               "AllCare"),
+                    value=c(60, 30, 120, 45, 60, 60*3, 
+                            60+ 30+ 120+ 45+ 60+ 60*3))
+activities <- ggplot(dat.m, aes(x=variable, y=value, col=pointcol)) + 
+  geom_boxplot(outlier.shape=NA, col="black") + #avoid plotting outliers twice
+  geom_jitter(position=position_jitter(width=.1, height=0), shape=1, col=pointcol) +
+  geom_point(data=dat.K, shape=17, size=4, col=Kcol) +
+  labs(x=" ", y = "Minutes per day") + 
+  #scale_x_discrete(name="", labels=c("Label 1", "Label 2")) +
+  guides(colour=FALSE) + 
+  theme_classic()
+pdf("atus/figures/ActivitiesWithChildren.pdf", width=8, height=8)
+activities
+dev.off()
 

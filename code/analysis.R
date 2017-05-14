@@ -23,18 +23,16 @@ act <- read.table("atussum_2015/atussum_2015.dat", sep=",", header=TRUE)
 ##############################################################################
 # wrangle and merge
 
-# roster has duplicate rows for each case in act/resp
-# want number of kids and their ages
-table(rost$TERRP)
-# TERRP: 22 = "Own household child"
-rost <- subset(rost, TERRP==22)
-summary(rost$TEAGE)
-# let's subset to those with at least 1 little kid
-sum(rost$TEAGE<=5)
-ids <- unique(rost$TUCASEID[rost$TEAGE<=5])
+# TRYHHCHILD = "Age of youngest household child < 18";
+table(act$TRYHHCHILD)
+sum(act$TRYHHCHILD %in% 0:5)
 
 dat <- merge(resp, act, by="TUCASEID")
-dat <- subset(dat, TUCASEID %in% ids)
+dat <- subset(dat, TRYHHCHILD.x %in% 0:5)
+
+# clean up
+rm(list = setdiff(ls(), c("dat")))
 
 ##############################################################################
+
 

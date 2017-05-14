@@ -132,8 +132,10 @@ dat$GroceryShop <- dat$t070101
 # t120201 = "Attending or hosting parties/receptions/ceremonies";
 # t120502 = "Waiting assoc. w/attending/hosting social events";
 # t120202 = "Attending meetings for personal interest (not volunteering)";
-# t120299 = "Attending/hosting social events, n.e.c.*";
+dat$SocialActivities <- dat$t120101 + dat$t120501 + dat$t120201 + dat$t120502 + dat$t120202
+
 # t120301 = "Relaxing, thinking";
+dat$Relaxing <- dat$t120301
 # t120302 = "Tobacco and drug use";
 # t120303 = "Television and movies (not religious)";
 # t120304 = "Television (religious)";
@@ -185,7 +187,6 @@ dat$GroceryShop <- dat$t070101
 # t130134 = "Working out, unspecified";
 # t130135 = "Wrestling";
 # t130136 = "Doing yoga";
-# t130199 = "Playing sports n.e.c.*";
 # t130202 = "Watching baseball";
 # t130203 = "Watching basketball";
 # t130207 = "Watching bowling";
@@ -204,21 +205,27 @@ dat$GroceryShop <- dat$t070101
 # t130227 = "Watching volleyball";
 # t130229 = "Watching water sports";
 # t130232 = "Watching wrestling";
-# t130299 = "Attending sporting events, n.e.c.*";
 # t130301 = "Waiting related to playing sports or exercising";
 # t130302 = "Waiting related to attending sporting events";
-# t139999 = "Sports, exercise, and recreation, n.e.c.*";
 # t140101 = "Attending religious services";
 # t140102 = "Participation in religious practices";
 # t140103 = "Waiting associated w/religious and spiritual activities";
 # t140105 = "Religious education activities";
-# t149999 = "Religious and spiritual activities, n.e.c.*";
+recVars <- c(paste("t12030", 2:9, sep=""), paste("t12031", 0:3, sep=""),
+             paste("t12040", 1:4, sep=""), "t120503", "t120504",
+             paste("t13010", 1:9, sep=""), paste("t13011", c(0,2:9), sep=""),
+             paste("t13012", c(0,2,4:9), sep=""), paste("t13013", 0:6, sep=""),
+             paste("t13020", c(2,3,7), sep=""), paste("t13021", c(0,2,3,6,8,9), sep=""),
+             paste("t13022", c(0,2:7,9), sep=""), "t130232", "t130301", "t130302",
+             paste("t14010", c(1,2,3,5), sep=""))
+dat$OtherRecreation <- apply(dat[,recVars], 1, sum)
+
 # t150101 = "Computer use";
 # t150102 = "Organizing and preparing";
 # t150103 = "Reading";
-# t150104 = "Telephone calls (except hotline counseling)";
+# t150104 = "Telephone calls";
 # t150105 = "Writing";
-# t150106 = "Fundraising";
+
 
 ##############################################################################
 # summarize and visualize
@@ -311,3 +318,23 @@ pdf("atus/figures/ActivitiesWithChildren.pdf", width=8, height=8)
 activities
 dev.off()
 
+# Personal Recreation
+dat$AllRecreation <- dat$SocialActivities + dat$Relaxing + dat$OtherRecreation
+dat.m <- melt(dat, id.vars = "TUCASEID", 
+              measure.vars=c("SocialActivities", "Relaxing",
+                             "OtherRecreation", "AllRecreation"))
+dat.K <- data.frame(variable=c(c("SocialActivities", "Relaxing",
+                                 "OtherRecreation", "AllRecreation")),
+                    value=c(5, 15, 45,
+                            5+ 15+ 45))
+recreation <- ggplot(dat.m, aes(x=variable, y=value, col=pointcol)) + 
+  geom_boxplot(outlier.shape=NA, col="black") + #avoid plotting outliers twice
+  geom_jitter(position=position_jitter(width=.1, height=0), shape=1, col=pointcol) +
+  geom_point(data=dat.K, shape=17, size=4, col=Kcol) +
+  labs(x=" ", y = "Minutes per day") + 
+  #scale_x_discrete(name="", labels=c("Label 1", "Label 2")) +
+  guides(colour=FALSE) + 
+  theme_classic()
+pdf("atus/figures/PersonalRecreation.pdf", width=8, height=8)
+recreation
+dev.off()
